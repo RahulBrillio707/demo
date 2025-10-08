@@ -1,0 +1,21 @@
+# Core dependencies
+streamlit
+pandas
+numpy
+
+# LLM and AI
+langchain-openai
+openai
+
+# Visualization
+matplotlib
+networkx
+plotly
+
+# Data processing
+pathlib
+json
+os
+
+# Optional for better performance
+pyarrow

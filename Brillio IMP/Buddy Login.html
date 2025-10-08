@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<style>
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+ u,  center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+margin: 0;
+padding: 0;
+border: 0;
+font-size: 100%;
+font: inherit;
+vertical-align: baseline;
+}
+
+
+
+input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #f44336;
+}
+
+.imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+	width: 300px;
+}
+
+img.avatar {
+    width: 40%;
+    border-radius: 50%;
+	margin-left: 100px;
+}
+
+.container {
+    padding: 16px;
+	width: 400px;
+}
+
+span.psw {
+    float: right;
+    padding-top: 16px;
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+    span.psw {
+       display: block;
+       float: none;
+    }
+    .cancelbtn {
+       width: 100%;
+    }
+}
+</style>
+<script>
+function myFunction() {
+    window.open("http://www.w3schools.com");
+}
+</script>
+<body>
+<div id="bodyWrapper">
+				<div style="background-color: #1ea16b; height:100px;">
+					<img src="https://system.na1.netsuite.com/core/media/media.nl?id=226601&amp;c=3883006&amp;h=35e9198516b97ffb4fc4&amp;whence=" style=" margin-left:30px; margin-top:10px;float:left;">
+					<h1 style="font-size: 350%;float: right;margin-right: 200px;color:white;margin-top: 11px;">Buddy Login</h1>
+				</div>
+		</div>
+
+
+<form style="margin-left:500px;" method="post" action="">
+  <div class="imgcontainer">
+    <img src="https://system.na1.netsuite.com/core/media/media.nl?id=232675&c=3883006&h=2367b4a25db03efaff51" alt="Avatar" class="avatar">
+  </div>
+
+  <div class="container">
+    <label><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="custparam_uname" required>
+
+    <label><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="custpara_mpsw" required>
+    
+    <input type="submit" class="submitbutton" name="Button1" value="Submit"  id="Button1"  />
+        <button type="submit">Login</button>
+
+  </div>
+
+</form>
+
+</body>
+</html>
+

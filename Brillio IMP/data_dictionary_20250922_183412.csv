@@ -1,0 +1,10 @@
+dataset,column,data_type,length,label,format,informat,origin,derivation,notes,defined_in
+work.sales,id,unknown,,Order ID,,,DATA step (attrib),,,
+work.sales,amount,unknown,,Sale Amount,dollar12.2,,DATA step (attrib),,,
+work.sales,amount_usd,derived,,,,,DATA step (assignment),amount*0.013,derived: conversion to USD,
+work.customers,cust_id,numeric,8,Customer ID,,,DATA step (declared),,,
+work.customers,cust_name,char,50,Customer Name,,,DATA step (declared),,,
+work.customers,signup_date,date,8,Signup Date,date9.,,DATA step (declared),,,
+work.customer_agg,cust_id,unknown,,,,,PROC SQL (create),cust_id,,
+work.customer_agg,total_amount,unknown,,,,,PROC SQL (create),sum(amount),,
+work.customer_agg,month_start,unknown,,,,,PROC SQL (create),"intnx('month', date, 0, 'b')",,

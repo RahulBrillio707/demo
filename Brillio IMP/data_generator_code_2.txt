@@ -1,0 +1,657 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime, timedelta
+import warnings
+warnings.filterwarnings('ignore')
+
+class McdonaldsTimeSeriesGenerator:
+    def __init__(self):
+        # 50 McDonald's menu items with categorization
+        self.menu_items = {
+            # Core Burgers & Sandwiches
+            'Big Mac': 'core_burger',
+            'Quarter Pounder': 'core_burger',
+            'McDouble': 'core_burger',
+            'Cheeseburger': 'core_burger',
+            'Hamburger': 'core_burger',
+            'McChicken': 'chicken',
+            'Chicken Deluxe': 'chicken',
+            'Crispy Chicken Sandwich': 'chicken',
+            'Spicy McChicken': 'chicken',
+            'Fish Fillet': 'seasonal',
+           
+            # Chicken Items
+            'Chicken McNuggets 4pc': 'chicken',
+            'Chicken McNuggets 6pc': 'chicken',
+            'Chicken McNuggets 10pc': 'chicken',
+            'Chicken McNuggets 20pc': 'chicken',
+            'Chicken Tenders': 'chicken',
+            'Spicy Nuggets': 'limited',
+           
+            # Breakfast Items
+            'Egg McMuffin': 'breakfast',
+            'Sausage McMuffin': 'breakfast',
+            'Bacon McMuffin': 'breakfast',
+            'McGriddles': 'breakfast',
+            'Hotcakes': 'breakfast',
+            'Sausage Burrito': 'breakfast',
+            'Big Breakfast': 'breakfast',
+            'Hash Browns': 'breakfast',
+            'Fruit Maple Oatmeal': 'breakfast',
+           
+            # Sides
+            'French Fries Small': 'sides',
+            'French Fries Medium': 'sides',
+            'French Fries Large': 'sides',
+            'Apple Slices': 'sides',
+            'Side Salad': 'sides',
+            'Mozzarella Sticks': 'sides',
+           
+            # Drinks
+            'Coca Cola Small': 'drinks',
+            'Coca Cola Medium': 'drinks',
+            'Coca Cola Large': 'drinks',
+            'Coffee': 'drinks',
+            'Orange Juice': 'drinks',
+            'Apple Juice': 'drinks',
+            'McCafe Latte': 'drinks',
+            'McCafe Cappuccino': 'drinks',
+            'Iced Tea': 'drinks',
+           
+            # Desserts
+            'Apple Pie': 'dessert',
+            'McFlurry Oreo': 'dessert',
+            'McFlurry M&M': 'dessert',
+            'Soft Serve Cone': 'dessert',
+            'Chocolate Chip Cookie': 'dessert',
+            'Vanilla Milkshake': 'dessert',
+            'Chocolate Milkshake': 'dessert',
+            'Strawberry Milkshake': 'dessert',
+           
+            # Seasonal/Limited Items
+            'Shamrock Shake': 'seasonal',
+            'McRib': 'limited',
+            'Pumpkin Spice Latte': 'seasonal',
+            'Holiday Pie': 'seasonal'
+        }
+       
+        # Category-specific parameters
+        self.category_params = {
+            'core_burger': {
+                'base_sales': 15000,
+                'trend_strength': 0.02,
+                'seasonality_strength': 0.25,  # Increased to make seasonal patterns more pronounced
+                'noise_level': 0.08,
+                'weekend_boost': 1.3,
+                'holiday_boost': 1.2
+            },
+            'chicken': {
+                'base_sales': 12000,
+                'trend_strength': 0.025,
+                'seasonality_strength': 0.22,  # Increased seasonality
+                'noise_level': 0.10,
+                'weekend_boost': 1.4,
+                'holiday_boost': 1.3
+            },
+            'breakfast': {
+                'base_sales': 8000,
+                'trend_strength': 0.015,
+                'seasonality_strength': 0.15,  # Moderate seasonality for breakfast
+                'noise_level': 0.12,
+                'weekend_boost': 0.8,  # Lower on weekends
+                'holiday_boost': 0.9
+            },
+            'sides': {
+                'base_sales': 18000,
+                'trend_strength': 0.01,
+                'seasonality_strength': 0.20,  # Increased seasonality
+                'noise_level': 0.15,
+                'weekend_boost': 1.3,
+                'holiday_boost': 1.2
+            },
+            'drinks': {
+                'base_sales': 20000,
+                'trend_strength': 0.008,
+                'seasonality_strength': 0.35,  # High seasonality (hot/cold drinks)
+                'noise_level': 0.12,
+                'weekend_boost': 1.2,
+                'holiday_boost': 1.1
+            },
+            'dessert': {
+                'base_sales': 6000,
+                'trend_strength': 0.005,
+                'seasonality_strength': 0.45,  # Very high seasonality for ice cream
+                'noise_level': 0.18,
+                'weekend_boost': 1.5,
+                'holiday_boost': 1.4
+            },
+            'seasonal': {
+                'base_sales': 3000,
+                'trend_strength': 0.0,
+                'seasonality_strength': 0.80,  # Very high seasonality
+                'noise_level': 0.25,
+                'weekend_boost': 1.3,
+                'holiday_boost': 2.0
+            },
+            'limited': {
+                'base_sales': 5000,
+                'trend_strength': 0.0,
+                'seasonality_strength': 0.30,  # Increased seasonality
+                'noise_level': 0.35,  # High variability
+                'weekend_boost': 1.4,
+                'holiday_boost': 1.8
+            }
+        }
+   
+    def generate_date_range(self, start_year=2010, end_year=2025):
+        """Generate monthly date range"""
+        start_date = datetime(start_year, 1, 1)
+        end_date = datetime(end_year, 12, 31)
+       
+        dates = []
+        current = start_date
+        while current <= end_date:
+            dates.append(current.replace(day=1))
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+       
+        return dates
+   
+    def add_trend_component(self, base_value, month_index, total_months, trend_strength):
+        """Add linear trend component"""
+        trend = base_value * (1 + trend_strength * (month_index / total_months))
+        return trend
+   
+    def add_seasonality_component(self, date, base_value, seasonality_strength, category):
+        """Add seasonal patterns based on category following the specified seasonal pattern:
+        Jan-Feb: Lower (harsh winter)
+        Mar-May: Stabilize 20% above Jan-Feb
+        Jun-Jul: Peak summer (highest demand)
+        Aug-Oct: Return to typical levels
+        Nov-Dec: Holiday boost
+        """
+        month = date.month
+       
+        # Updated seasonal patterns based on requirements
+        seasonal_multipliers = {
+            # Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+            'core_burger': [0.80, 0.80, 0.96, 0.96, 0.96, 1.30, 1.35, 1.00, 1.00, 1.00, 1.15, 1.20],
+            'chicken': [0.78, 0.78, 0.94, 0.94, 0.94, 1.32, 1.38, 1.02, 1.02, 1.02, 1.18, 1.22],
+            'breakfast': [0.85, 0.85, 1.02, 1.02, 1.02, 1.15, 1.15, 1.00, 1.00, 1.00, 1.10, 1.12],
+            'sides': [0.82, 0.82, 0.98, 0.98, 0.98, 1.28, 1.32, 1.05, 1.05, 1.05, 1.12, 1.15],
+            'drinks': [0.75, 0.75, 0.90, 0.90, 0.90, 1.45, 1.50, 1.10, 1.10, 1.10, 1.08, 1.10],
+            'dessert': [0.70, 0.70, 0.84, 0.84, 0.84, 1.55, 1.65, 1.15, 1.15, 1.15, 1.25, 1.35],  # Ice cream peaks in summer
+            'seasonal': [0.20, 0.25, 1.80, 0.50, 0.30, 0.25, 0.15, 0.20, 0.25, 0.80, 1.50, 2.00],
+            'limited': [0.60, 0.70, 1.10, 1.20, 1.00, 1.30, 1.25, 0.90, 0.85, 0.95, 1.60, 1.40]
+        }
+       
+        multiplier = seasonal_multipliers.get(category, [1.0] * 12)[month - 1]
+        return base_value * (1 + seasonality_strength * (multiplier - 1))
+   
+    def add_seasonality_component(self, date, base_value, seasonality_strength, category):
+        """Add seasonal patterns based on category following the specified seasonal pattern:
+        Jan-Feb: Lower (harsh winter)
+        Mar-May: Stabilize 20% above Jan-Feb
+        Jun-Jul: Peak summer (highest demand)
+        Aug-Oct: Return to typical levels
+        Nov-Dec: Holiday boost
+        """
+        month = date.month
+       
+        # Updated seasonal patterns with more variety between categories
+        seasonal_multipliers = {
+            # Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+            'core_burger': [0.80, 0.80, 0.96, 0.96, 0.96, 1.30, 1.35, 1.00, 1.00, 1.00, 1.15, 1.20],
+            'chicken': [0.78, 0.78, 0.94, 0.94, 0.94, 1.32, 1.38, 1.02, 1.02, 1.02, 1.18, 1.22],
+            'breakfast': [0.85, 0.85, 1.02, 1.02, 1.02, 1.15, 1.15, 1.00, 1.00, 1.00, 1.10, 1.12],
+            'sides': [0.82, 0.82, 0.98, 0.98, 0.98, 1.28, 1.32, 1.05, 1.05, 1.05, 1.12, 1.15],
+            'drinks': [0.75, 0.75, 0.90, 0.90, 0.90, 1.45, 1.50, 1.10, 1.10, 1.10, 1.08, 1.10],
+            'dessert': [0.70, 0.70, 0.84, 0.84, 0.84, 1.55, 1.65, 1.15, 1.15, 1.15, 1.25, 1.35],
+            'seasonal': [0.05, 0.08, 1.80, 0.50, 0.30, 0.25, 0.15, 0.20, 0.25, 0.80, 1.50, 2.50],  # More extreme
+            'limited': [0.40, 0.50, 1.10, 1.20, 1.00, 1.30, 1.25, 0.70, 0.60, 0.75, 1.80, 1.60]   # More variation
+        }
+       
+        multiplier = seasonal_multipliers.get(category, [1.0] * 12)[month - 1]
+        return base_value * (1 + seasonality_strength * (multiplier - 1))
+   
+    def add_special_events(self, date, base_value, category, item_name=None):
+        """Add special events and holidays impact with item-specific effects"""
+        month = date.month
+        year = date.year
+        multiplier = 1.0
+       
+        # Holiday impacts - category specific
+        if month == 12:  # Christmas/New Year
+            holiday_boosts = {
+                'core_burger': 1.3, 'chicken': 1.35, 'breakfast': 0.9,
+                'sides': 1.25, 'drinks': 1.1, 'dessert': 1.6,
+                'seasonal': 3.0, 'limited': 1.8
+            }
+            multiplier *= holiday_boosts.get(category, 1.2)
+        elif month == 11:  # Thanksgiving
+            multiplier *= 1.2
+        elif month == 7:  # Summer vacation
+            multiplier *= 1.15
+        elif month == 3:  # Spring break
+            multiplier *= 1.1
+       
+        # Item-specific special events
+        if item_name:
+            if 'Shamrock Shake' in item_name and month == 3:
+                multiplier *= 8.0  # Massive March boost
+            elif 'Shamrock Shake' in item_name and month not in [2, 3, 4]:
+                multiplier *= 0.05  # Almost zero outside season
+           
+            elif 'McRib' in item_name:
+                # McRib appears randomly for 2-3 month periods
+                mcrib_months = [1, 10, 11] if year % 2 == 0 else [4, 5, 9]
+                if month in mcrib_months:
+                    multiplier *= 3.0
+                else:
+                    multiplier *= 0.1
+           
+            elif 'Pumpkin Spice' in item_name:
+                if month in [9, 10, 11]:
+                    multiplier *= [1.5, 4.0, 2.0][month - 9]
+                else:
+                    multiplier *= 0.02
+           
+            elif 'Holiday Pie' in item_name:
+                if month in [11, 12]:
+                    multiplier *= 6.0
+                else:
+                    multiplier *= 0.01
+           
+            # Coffee items - higher in cold months
+            elif 'Coffee' in item_name or 'Latte' in item_name or 'Cappuccino' in item_name:
+                cold_boost = {1: 1.4, 2: 1.5, 3: 1.2, 11: 1.3, 12: 1.4}.get(month, 1.0)
+                multiplier *= cold_boost
+           
+            # Ice cream items - much higher in summer
+            elif any(word in item_name for word in ['Milkshake', 'McFlurry', 'Cone']):
+                if month in [6, 7, 8]:
+                    multiplier *= 2.5
+                elif month in [1, 2, 12]:
+                    multiplier *= 0.3
+       
+        # Economic events (simplified)
+        if year == 2020:  # COVID impact - varies by category
+            covid_impact = {
+                'breakfast': 0.4,  # Breakfast hit hardest (no commuting)
+                'dessert': 0.6,    # Less dessert consumption
+                'drinks': 0.7,     # Reduced drink sales
+                'core_burger': 0.8, # Takeout helped burgers
+                'sides': 0.8,
+                'chicken': 0.9,
+                'seasonal': 0.3,   # Special items hit hard
+                'limited': 0.2
+            }
+            multiplier *= covid_impact.get(category, 0.7)
+        elif year == 2021:  # Recovery
+            multiplier *= 0.85
+        elif year == 2008:  # Financial crisis
+            multiplier *= 0.9
+       
+        return base_value * multiplier
+   
+    def add_noise_component(self, base_value, noise_level):
+        """Add random noise"""
+        noise = np.random.normal(0, noise_level * base_value)
+        return base_value + noise
+   
+    def add_autocorrelation(self, series, correlation=0.3):
+        """Add autocorrelation to make the series more realistic"""
+        for i in range(1, len(series)):
+            series[i] = series[i] + correlation * (series[i-1] - np.mean(series[:i]))
+        return series
+   
+    def get_item_specific_parameters(self, item_name, category):
+        """Get item-specific parameters that create unique patterns"""
+        # Create unique characteristics for each item
+        np.random.seed(hash(item_name) % 2**32)  # Consistent randomness per item
+       
+        base_params = self.category_params[category].copy()
+       
+        # Item-specific customizations
+        item_customizations = {
+            # Core Burgers - Different popularity levels
+            'Big Mac': {'base_multiplier': 1.5, 'trend_strength': 0.03, 'seasonality_strength': 0.2},
+            'Quarter Pounder': {'base_multiplier': 1.2, 'trend_strength': 0.025, 'seasonality_strength': 0.25},
+            'McDouble': {'base_multiplier': 0.8, 'trend_strength': 0.04, 'seasonality_strength': 0.3},
+            'Cheeseburger': {'base_multiplier': 1.0, 'trend_strength': 0.01, 'seasonality_strength': 0.22},
+            'Hamburger': {'base_multiplier': 0.6, 'trend_strength': -0.01, 'seasonality_strength': 0.18},
+           
+            # Chicken - Different sizes and popularity
+            'Chicken McNuggets 4pc': {'base_multiplier': 0.7, 'seasonality_strength': 0.15},
+            'Chicken McNuggets 6pc': {'base_multiplier': 1.0, 'seasonality_strength': 0.18},
+            'Chicken McNuggets 10pc': {'base_multiplier': 1.3, 'seasonality_strength': 0.25},
+            'Chicken McNuggets 20pc': {'base_multiplier': 0.8, 'seasonality_strength': 0.3},
+            'McChicken': {'base_multiplier': 1.1, 'trend_strength': 0.035},
+           
+            # Breakfast - Different meal occasions
+            'Egg McMuffin': {'base_multiplier': 1.4, 'trend_strength': 0.02, 'weekend_boost': 0.7},
+            'Hash Browns': {'base_multiplier': 1.2, 'weekend_boost': 0.6},
+            'Hotcakes': {'base_multiplier': 0.8, 'weekend_boost': 1.2, 'seasonality_strength': 0.25},
+            'Coffee': {'base_multiplier': 2.0, 'trend_strength': 0.025, 'seasonality_strength': 0.4},
+           
+            # Sides - Different serving sizes
+            'French Fries Small': {'base_multiplier': 0.8, 'seasonality_strength': 0.15},
+            'French Fries Medium': {'base_multiplier': 1.3, 'seasonality_strength': 0.20},
+            'French Fries Large': {'base_multiplier': 1.0, 'seasonality_strength': 0.25},
+           
+            # Drinks - Hot vs Cold distinction
+            'Coca Cola Small': {'base_multiplier': 1.0, 'seasonality_strength': 0.4},
+            'Coca Cola Medium': {'base_multiplier': 1.4, 'seasonality_strength': 0.35},
+            'Coca Cola Large': {'base_multiplier': 0.9, 'seasonality_strength': 0.3},
+            'McCafe Latte': {'base_multiplier': 0.6, 'seasonality_strength': 0.5, 'trend_strength': 0.04},
+            'McCafe Cappuccino': {'base_multiplier': 0.4, 'seasonality_strength': 0.6, 'trend_strength': 0.045},
+           
+            # Desserts - Very seasonal
+            'Vanilla Milkshake': {'base_multiplier': 0.8, 'seasonality_strength': 0.6},
+            'Chocolate Milkshake': {'base_multiplier': 0.9, 'seasonality_strength': 0.65},
+            'Strawberry Milkshake': {'base_multiplier': 0.6, 'seasonality_strength': 0.7},
+            'McFlurry Oreo': {'base_multiplier': 1.2, 'seasonality_strength': 0.8},
+            'McFlurry M&M': {'base_multiplier': 1.0, 'seasonality_strength': 0.75},
+            'Apple Pie': {'base_multiplier': 1.1, 'seasonality_strength': 0.3, 'trend_strength': -0.005},
+           
+            # Seasonal items - Extreme patterns
+            'Shamrock Shake': {'base_multiplier': 0.3, 'seasonality_strength': 0.95, 'noise_level': 0.4},
+            'McRib': {'base_multiplier': 0.4, 'seasonality_strength': 0.8, 'noise_level': 0.5},
+            'Pumpkin Spice Latte': {'base_multiplier': 0.25, 'seasonality_strength': 0.9, 'noise_level': 0.35},
+            'Holiday Pie': {'base_multiplier': 0.2, 'seasonality_strength': 0.85, 'noise_level': 0.3},
+        }
+       
+        # Apply item-specific customizations
+        if item_name in item_customizations:
+            custom = item_customizations[item_name]
+            for param, value in custom.items():
+                if param == 'base_multiplier':
+                    base_params['base_sales'] *= value
+                else:
+                    base_params[param] = value
+        else:
+            # For items without specific customization, add random variation
+            base_params['base_sales'] *= np.random.uniform(0.4, 1.8)
+            base_params['trend_strength'] *= np.random.uniform(0.5, 2.0)
+            base_params['seasonality_strength'] *= np.random.uniform(0.6, 1.4)
+            base_params['noise_level'] *= np.random.uniform(0.8, 1.3)
+       
+        return base_params
+   
+    def generate_item_series(self, item_name, dates):
+        """Generate time series for a single menu item"""
+        category = self.menu_items[item_name]
+        params = self.get_item_specific_parameters(item_name, category)
+       
+        base_sales = params['base_sales']
+       
+        series = []
+        total_months = len(dates)
+       
+        for i, date in enumerate(dates):
+            # Start with base sales
+            value = base_sales
+           
+            # Add trend
+            value = self.add_trend_component(value, i, total_months, params['trend_strength'])
+           
+            # Add seasonality
+            value = self.add_seasonality_component(date, value, params['seasonality_strength'], category)
+           
+            # Add special events (item-specific)
+            value = self.add_special_events(date, value, category, item_name)
+           
+            # Add noise
+            value = self.add_noise_component(value, params['noise_level'])
+           
+            # Ensure non-negative
+            value = max(0, value)
+           
+            series.append(value)
+       
+        # Add autocorrelation with item-specific correlation
+        correlation = np.random.uniform(0.1, 0.5)  # Different autocorrelation per item
+        series = self.add_autocorrelation(np.array(series), correlation)
+       
+        # Ensure all values are positive and integer
+        series = np.maximum(series, 0).astype(int)
+       
+        return series
+   
+    def generate_full_dataset(self):
+        """Generate complete dataset for all menu items"""
+        dates = self.generate_date_range()
+       
+        # Create base dataframe
+        df = pd.DataFrame({'date': dates})
+        df['year'] = df['date'].dt.year
+        df['month'] = df['date'].dt.month
+        df['quarter'] = df['date'].dt.quarter
+        df['is_holiday_season'] = df['month'].isin([11, 12])
+        df['is_summer'] = df['month'].isin([6, 7, 8])
+       
+        # Generate series for each menu item
+        print("Generating time series data for 50 McDonald's menu items...")
+        for i, item_name in enumerate(self.menu_items.keys(), 1):
+            print(f"Generating data for {item_name} ({i}/50)")
+            df[item_name] = self.generate_item_series(item_name, dates)
+       
+        return df
+   
+    def plot_sample_items(self, df, items=None, save_path=None):
+        """Plot time series for sample items showing diversity"""
+        if items is None:
+            # Choose items that should show very different patterns
+            items = ['Big Mac', 'Shamrock Shake', 'Coffee',
+                    'Vanilla Milkshake', 'Hash Browns', 'McRib']
+       
+        fig, axes = plt.subplots(2, 3, figsize=(22, 14))
+        axes = axes.flatten()
+       
+        for i, item in enumerate(items):
+            if item in df.columns:
+                axes[i].plot(df['date'], df[item], linewidth=2.5, color=f'C{i}')
+                axes[i].set_title(f'{item} - Monthly Sales\n(Category: {self.menu_items.get(item, "Unknown")})',
+                                fontsize=12, fontweight='bold')
+                axes[i].set_xlabel('Date')
+                axes[i].set_ylabel('Sales Volume')
+                axes[i].grid(True, alpha=0.3)
+                axes[i].tick_params(axis='x', rotation=45)
+               
+                # Add mean line for reference
+                mean_val = df[item].mean()
+                axes[i].axhline(y=mean_val, color='red', linestyle='--', alpha=0.5,
+                              label=f'Mean: {mean_val:,.0f}')
+                axes[i].legend(loc='upper right', fontsize=9)
+       
+        plt.suptitle('Time Series Diversity - Different Patterns Across Menu Items',
+                     fontsize=16, fontweight='bold', y=0.98)
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.show()
+   
+    def compare_item_characteristics(self, df):
+        """Compare characteristics across different items to show diversity"""
+        item_columns = [col for col in df.columns if col not in ['date', 'year', 'month', 'quarter', 'is_holiday_season', 'is_summer']]
+       
+        comparison_items = [
+            'Big Mac', 'Shamrock Shake', 'Coffee', 'Vanilla Milkshake',
+            'Hash Browns', 'McRib', 'French Fries Medium', 'McCafe Latte'
+        ]
+       
+        print("\n=== ITEM DIVERSITY ANALYSIS ===")
+        print("Comparing different characteristics to show uniqueness:")
+        print()
+       
+        results = []
+        for item in comparison_items:
+            if item in df.columns:
+                series = df[item]
+               
+                # Calculate various metrics
+                mean_sales = series.mean()
+                std_sales = series.std()
+                cv = (std_sales / mean_sales) * 100  # Coefficient of variation
+               
+                # Seasonal analysis
+                monthly_avg = df.groupby('month')[item].mean()
+                seasonal_range = (monthly_avg.max() - monthly_avg.min()) / monthly_avg.mean() * 100
+               
+                # Peak month
+                peak_month = monthly_avg.idxmax()
+                peak_month_name = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][peak_month]
+               
+                # Trend analysis
+                months = range(len(series))
+                trend_corr = np.corrcoef(months, series)[0, 1]
+               
+                results.append({
+                    'Item': item,
+                    'Category': self.menu_items.get(item, 'Unknown'),
+                    'Avg Sales': f"{mean_sales:,.0f}",
+                    'Variability (CV)': f"{cv:.1f}%",
+                    'Seasonal Range': f"{seasonal_range:.1f}%",
+                    'Peak Month': peak_month_name,
+                    'Trend': 'Growth' if trend_corr > 0.1 else 'Decline' if trend_corr < -0.1 else 'Stable'
+                })
+       
+        # Display results
+        for result in results:
+            print(f"{result['Item']} ({result['Category']}):")
+            print(f"  Average Sales: {result['Avg Sales']}")
+            print(f"  Variability: {result['Variability (CV)']} (higher = more volatile)")
+            print(f"  Seasonal Range: {result['Seasonal Range']} (higher = more seasonal)")
+            print(f"  Peak Month: {result['Peak Month']}")
+            print(f"  Trend: {result['Trend']}")
+            print()
+       
+        return results
+   
+    def analyze_seasonal_patterns(self, df):
+        """Analyze and display the seasonal patterns to verify they match requirements"""
+        item_columns = [col for col in df.columns if col not in ['date', 'year', 'month', 'quarter', 'is_holiday_season', 'is_summer']]
+       
+        # Calculate monthly averages
+        monthly_avg = df.groupby('month')[item_columns].mean()
+       
+        # Show seasonal pattern for sample items
+        sample_items = ['Big Mac', 'French Fries Medium', 'Vanilla Milkshake', 'McCafe Latte']
+       
+        print("\n=== SEASONAL PATTERN ANALYSIS ===")
+        print("Monthly sales patterns (relative to annual average):")
+        print("Expected pattern:")
+        print("- Jan-Feb: Lower (harsh winter)")
+        print("- Mar-May: 20% above Jan-Feb")  
+        print("- Jun-Jul: Peak summer")
+        print("- Aug-Oct: Typical levels")
+        print("- Nov-Dec: Holiday boost")
+        print()
+       
+        for item in sample_items:
+            if item in monthly_avg.columns:
+                item_monthly = monthly_avg[item]
+                annual_avg = item_monthly.mean()
+                relative_values = (item_monthly / annual_avg * 100).round(1)
+               
+                print(f"{item}:")
+                months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                for i, month in enumerate(months):
+                    print(f"  {month}: {relative_values.iloc[i]}% of annual avg")
+               
+                # Verify the pattern
+                jan_feb_avg = relative_values.iloc[0:2].mean()
+                mar_may_avg = relative_values.iloc[2:5].mean()
+                jun_jul_avg = relative_values.iloc[5:7].mean()
+                aug_oct_avg = relative_values.iloc[7:10].mean()
+                nov_dec_avg = relative_values.iloc[10:12].mean()
+               
+                print(f"  Pattern verification:")
+                print(f"    Winter (Jan-Feb): {jan_feb_avg:.1f}%")
+                print(f"    Spring (Mar-May): {mar_may_avg:.1f}% ({((mar_may_avg/jan_feb_avg-1)*100):+.1f}% vs Winter)")
+                print(f"    Summer Peak (Jun-Jul): {jun_jul_avg:.1f}%")
+                print(f"    Fall (Aug-Oct): {aug_oct_avg:.1f}%")
+                print(f"    Holiday (Nov-Dec): {nov_dec_avg:.1f}%")
+                print()
+       
+        return monthly_avg
+   
+    def generate_summary_statistics(self, df):
+        """Generate summary statistics for the dataset"""
+        item_columns = [col for col in df.columns if col not in ['date', 'year', 'month', 'quarter', 'is_holiday_season', 'is_summer']]
+       
+        summary_stats = {}
+        for item in item_columns:
+            stats = {
+                'mean': df[item].mean(),
+                'std': df[item].std(),
+                'min': df[item].min(),
+                'max': df[item].max(),
+                'trend': np.corrcoef(range(len(df)), df[item])[0, 1],
+                'seasonality': df.groupby('month')[item].mean().std(),
+                'category': self.menu_items[item]
+            }
+            summary_stats[item] = stats
+       
+        return pd.DataFrame(summary_stats).T
+   
+    def save_dataset(self, df, filename='mcdonalds_timeseries_data.csv'):
+        """Save the dataset to CSV"""
+        df.to_csv(filename, index=False)
+        print(f"Dataset saved as {filename}")
+        print(f"Shape: {df.shape}")
+        print(f"Date range: {df['date'].min()} to {df['date'].max()}")
+
+# Usage example
+if __name__ == "__main__":
+    # Set random seed for reproducibility
+    np.random.seed(42)
+   
+    # Initialize generator
+    generator = McdonaldsTimeSeriesGenerator()
+   
+    # Generate the complete dataset
+    df = generator.generate_full_dataset()
+   
+    # Display basic info
+    print("\nDataset Overview:")
+    print(f"Shape: {df.shape}")
+    print(f"Date range: {df['date'].min()} to {df['date'].max()}")
+    print(f"Menu items: {len(generator.menu_items)}")
+   
+    # Show sample data
+    print("\nFirst 5 rows of sample columns:")
+    sample_cols = ['date', 'Big Mac', 'French Fries Medium', 'Chicken McNuggets 10pc']
+    print(df[sample_cols].head())
+   
+    # Generate summary statistics
+    summary_stats = generator.generate_summary_statistics(df)
+    print("\nSummary Statistics (first 5 items):")
+    print(summary_stats.head())
+   
+    # Analyze seasonal patterns to verify they match requirements
+    monthly_patterns = generator.analyze_seasonal_patterns(df)
+   
+    # Compare item characteristics to show diversity
+    diversity_analysis = generator.compare_item_characteristics(df)
+   
+    # Plot sample items with diverse patterns
+    generator.plot_sample_items(df)
+   
+    # Save dataset
+    generator.save_dataset(df)
+   
+    print("\nDataset generation complete!")
+    print("Features included:")
+    print("- Linear trends")
+    print("- Seasonal patterns")
+    print("- Random noise")
+    print("- Special events/holidays")
+    print("- Category-specific behaviors")
+    print("- Autocorrelation")
+    print("- Economic event impacts")
